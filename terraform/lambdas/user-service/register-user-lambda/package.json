@@ -1,0 +1,12 @@
+{
+  "name": "register-user-lambda",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1004.0",
+    "@aws-sdk/lib-dynamodb": "^3.1004.0",
+    "bcryptjs": "^3.0.3",
+    "uuid": "^8.3.2"
+  }
+}
