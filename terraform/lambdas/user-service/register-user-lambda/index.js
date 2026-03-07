@@ -1,10 +1,14 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
+const sqs = new SQSClient({});
+
+const QUEUE_URL = process.env.CARD_REQUEST_QUEUE;
 
 export const handler = async (event) => {
 
@@ -46,6 +50,19 @@ export const handler = async (event) => {
         TableName: "user-table",
         Item: user
     }));
+
+    //SQS
+    const message = {
+        userId: id,
+        request: "DEBIT"
+    };
+
+    await sqs.send(
+        new SendMessageCommand({
+            QueueUrl: QUEUE_URL,
+            MessageBody: JSON.stringify(message)
+        })
+    );
 
     return {
         statusCode: 200,
