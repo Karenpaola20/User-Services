@@ -9,6 +9,7 @@ const dynamo = DynamoDBDocumentClient.from(client);
 const sqs = new SQSClient({});
 
 const QUEUE_URL = process.env.CARD_REQUEST_QUEUE;
+const NOTIFICATION_QUEUE = process.env.NOTIFICATION_QUEUE;
 
 export const handler = async (event) => {
 
@@ -52,15 +53,43 @@ export const handler = async (event) => {
     }));
 
     //SQS
-    const message = {
+    const debitCardRequest = {
         userId: id,
         request: "DEBIT"
     };
 
+    const creditCardRequest = {
+        userId: id,
+        request: "CREDIT"
+    }
+
     await sqs.send(
         new SendMessageCommand({
             QueueUrl: QUEUE_URL,
-            MessageBody: JSON.stringify(message)
+            MessageBody: JSON.stringify(debitCardRequest)
+        })
+    );
+
+    await sqs.send(
+        new SendMessageCommand({
+            QueueUrl: QUEUE_URL,
+            MessageBody: JSON.stringify(creditCardRequest)
+        })
+    );
+
+    // Notificacion
+    const notificationEvent = {
+        type: "WELCOME",
+        data: {
+            fullName: `${body.name} ${body.lastName}`,
+            email: body.email
+        }
+    };
+
+    await sqs.send(
+        new SendMessageCommand({
+            QueueUrl: NOTIFICATION_QUEUE,
+            MessageBody: JSON.stringify(notificationEvent)
         })
     );
 

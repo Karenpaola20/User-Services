@@ -15,13 +15,13 @@ resource "aws_lambda_function" "register_user" {
   environment {
     variables = {
       CARD_REQUEST_QUEUE = "https://sqs.us-east-1.amazonaws.com/537236557851/create-request-card-sqs"
+      NOTIFICATION_QUEUE = "https://sqs.us-east-1.amazonaws.com/537236557851/notification-email-sqs"
     }
   }
 }
 
 resource "aws_lambda_permission" "apigw" {
-
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvokeRegister"
 
   action        = "lambda:InvokeFunction"
 
@@ -29,19 +29,29 @@ resource "aws_lambda_permission" "apigw" {
 
   principal     = "apigateway.amazonaws.com"
 
+  source_arn = "${aws_api_gateway_rest_api.pigbank_api.execution_arn}/*/*"
 }
 
+//Login
 resource "aws_lambda_function" "login_user" {
   function_name = "login-user"
 
-  handler = "index.handler"
   runtime = "nodejs20.x"
+  handler = "index.handler"
+
+  timeout = 10
+  memory_size = 256
 
   role = aws_iam_role.lambda_exec.arn
 
   filename = "${path.module}/lambdas/user-service/login-user-lambda/login.zip"
-
   source_code_hash = filebase64sha256("${path.module}/lambdas/user-service/login-user-lambda/login.zip")
+
+  environment {
+    variables = {
+      NOTIFICATION_QUEUE = "https://sqs.us-east-1.amazonaws.com/537236557851/notification-email-sqs"
+    }
+  }
 }
 
 resource "aws_lambda_permission" "apigw_login" {
@@ -54,6 +64,7 @@ resource "aws_lambda_permission" "apigw_login" {
 
   principal = "apigateway.amazonaws.com"
 
+  source_arn = "${aws_api_gateway_rest_api.pigbank_api.execution_arn}/*/*"
 }
 
 resource "aws_iam_role_policy" "lambda_sqs_send" {
@@ -69,8 +80,36 @@ resource "aws_iam_role_policy" "lambda_sqs_send" {
         Action = [
           "sqs:SendMessage"
         ]
-        Resource = "arn:aws:sqs:us-east-1:537236557851:create-request-card-sqs"
+        Resource = [
+          "arn:aws:sqs:us-east-1:537236557851:create-request-card-sqs",
+          "arn:aws:sqs:us-east-1:537236557851:notification-email-sqs"
+        ]
       }
     ]
   })
+}
+
+//Get
+resource "aws_lambda_function" "get_profile_user" {
+  function_name = "get-profile-user-lambda"
+
+  handler = "index.handler"
+  runtime = "nodejs20.x"
+
+  filename = "${path.module}/lambdas/user-service/get-profile-user-lambda/get-profile.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambdas/user-service/get-profile-user-lambda/get-profile.zip")
+
+  role = aws_iam_role.lambda_exec.arn
+}
+
+resource "aws_lambda_permission" "api_get_profile" {
+  statement_id = "AllowAPIGatewayInvoke"
+
+  action = "lambda:InvokeFunction"
+
+  function_name = aws_lambda_function.get_profile_user.function_name
+
+  principal = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_api_gateway_rest_api.pigbank_api.execution_arn}/*/*"
 }

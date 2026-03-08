@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
@@ -8,6 +9,9 @@ const dynamo = DynamoDBDocumentClient.from(client);
 
 const TABLE_NAME = "user-table";
 const JWT_SECRET = "mysecret";
+
+const sqs = new SQSClient({});
+const NOTIFICATION_QUEUE = process.env.NOTIFICATION_QUEUE;
 
 export const handler = async (event) => {
 
@@ -69,10 +73,27 @@ export const handler = async (event) => {
       { expiresIn: "1h" }
     );
 
+    const notificationEvent = {
+      type: "USER.LOGIN",
+      fullName: `${user.name} ${user.lastName}`,
+      data: {
+        date: new Date().toISOString(),
+        email: user.email
+      }
+    };
+
+    await sqs.send(
+      new SendMessageCommand({
+        QueueUrl: NOTIFICATION_QUEUE,
+        MessageBody: JSON.stringify(notificationEvent)
+      })
+    );
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        token
+        token,
+        userId: user.uuid
       })
     };
 
