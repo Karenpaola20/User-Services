@@ -66,16 +66,19 @@ resource "aws_api_gateway_deployment" "deployment" {
       aws_api_gateway_resource.register.id,
       aws_api_gateway_resource.login.id,
       aws_api_gateway_resource.profile_user.id,
+      aws_api_gateway_resource.avatar.id,
 
       aws_api_gateway_method.register_post.id,
       aws_api_gateway_method.login_post.id,
       aws_api_gateway_method.get_profile.id,
       aws_api_gateway_method.update_user_method.id,
+      aws_api_gateway_method.avatar_post.id,
 
       aws_api_gateway_integration.lambda_register.id,
       aws_api_gateway_integration.lambda_login.id,
       aws_api_gateway_integration.get_profile_integration.id,
-      aws_api_gateway_integration.update_user_integration.id
+      aws_api_gateway_integration.update_user_integration.id,
+      aws_api_gateway_integration.avatar_lambda.id
     ]))
   }
 
@@ -151,4 +154,46 @@ resource "aws_api_gateway_integration" "update_user_integration" {
   integration_http_method = "POST"
   type = "AWS_PROXY"
   uri = aws_lambda_function.update_user_lambda.invoke_arn
+}
+
+//Update
+resource "aws_lambda_permission" "allow_apig_avatar" {
+  statement_id  = "AllowAPIGatewayInvokeAvatar"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.upload_avatar.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_api_gateway_rest_api.pigbank_api.execution_arn}/*/*"
+}
+
+resource "aws_api_gateway_resource" "avatar" {
+  rest_api_id = aws_api_gateway_rest_api.pigbank_api.id
+
+  parent_id   = aws_api_gateway_resource.profile_user.id
+
+  path_part   = "avatar"
+}
+
+resource "aws_api_gateway_method" "avatar_post" {
+  rest_api_id   = aws_api_gateway_rest_api.pigbank_api.id
+
+  resource_id   = aws_api_gateway_resource.avatar.id
+
+  http_method   = "POST"
+
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "avatar_lambda" {
+  rest_api_id = aws_api_gateway_rest_api.pigbank_api.id
+
+  resource_id = aws_api_gateway_resource.avatar.id
+
+  http_method = aws_api_gateway_method.avatar_post.http_method
+
+  integration_http_method = "POST"
+
+  type = "AWS_PROXY"
+
+  uri = aws_lambda_function.upload_avatar.invoke_arn
 }

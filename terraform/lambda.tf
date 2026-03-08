@@ -14,6 +14,7 @@ resource "aws_lambda_function" "register_user" {
 
   environment {
     variables = {
+      USERS_TABLE = aws_dynamodb_table.user_table.name
       CARD_REQUEST_QUEUE = "https://sqs.us-east-1.amazonaws.com/537236557851/create-request-card-sqs"
       NOTIFICATION_QUEUE = "https://sqs.us-east-1.amazonaws.com/537236557851/notification-email-sqs"
     }
@@ -42,13 +43,15 @@ resource "aws_lambda_function" "login_user" {
   timeout = 10
   memory_size = 256
 
-  role = aws_iam_role.lambda_exec.arn
-
   filename = "${path.module}/lambdas/user-service/login-user-lambda/login.zip"
   source_code_hash = filebase64sha256("${path.module}/lambdas/user-service/login-user-lambda/login.zip")
 
+  
+  role = aws_iam_role.lambda_exec.arn
   environment {
     variables = {
+      USERS_TABLE = aws_dynamodb_table.user_table.name
+      JWT_SECRET = "mysecret"
       NOTIFICATION_QUEUE = "https://sqs.us-east-1.amazonaws.com/537236557851/notification-email-sqs"
     }
   }
@@ -141,4 +144,45 @@ resource "aws_lambda_permission" "allow_apigw_update_user" {
   principal       = "apigateway.amazonaws.com"
 
   source_arn      = "${aws_api_gateway_rest_api.pigbank_api.execution_arn}/*/*"
+}
+
+//Avatar
+resource "aws_iam_role_policy" "lambda_s3_upload" {
+  name = "lambda-upload-s3"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = "${aws_s3_bucket.user_avatars.arn}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "upload_avatar" {
+  function_name = "upload-avatar-lambda"
+
+  runtime = "nodejs20.x"
+  handler = "index.handler"
+
+  timeout = 10
+  memory_size = 256
+
+  filename = "${path.module}/lambdas/user-service/upload-avatar-user-lambda/avatar.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambdas/user-service/upload-avatar-user-lambda/avatar.zip")
+
+  role = aws_iam_role.lambda_exec.arn
+
+  environment {
+    variables = {
+      AVATAR_BUCKET = aws_s3_bucket.user_avatars.bucket
+      USERS_TABLE   = aws_dynamodb_table.user_table.name
+    }
+  }
 }

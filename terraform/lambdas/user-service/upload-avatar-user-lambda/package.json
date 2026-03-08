@@ -1,0 +1,12 @@
+{
+  "name": "avatar-user-lambda",
+  "version": "1.0.0",
+  "description": "Upload user avatar to S3 and update DynamoDB",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0"
+  }
+}

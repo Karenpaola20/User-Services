@@ -6,11 +6,10 @@ import bcrypt from "bcryptjs";
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
-
-const TABLE_NAME = "user-table";
-const JWT_SECRET = "mysecret";
-
 const sqs = new SQSClient({});
+
+const USERS_TABLE = process.env.USERS_TABLE;
+const JWT_SECRET = process.env.JWT_SECRET;
 const NOTIFICATION_QUEUE = process.env.NOTIFICATION_QUEUE;
 
 export const handler = async (event) => {
@@ -33,7 +32,7 @@ export const handler = async (event) => {
     // Buscar usuario por email
     const result = await dynamo.send(
       new ScanCommand({
-        TableName: TABLE_NAME,
+        TableName: USERS_TABLE,
         FilterExpression: "email = :email",
         ExpressionAttributeValues: {
           ":email": email

@@ -8,6 +8,7 @@ const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
 const sqs = new SQSClient({});
 
+const USERS_TABLE = process.env.USERS_TABLE;
 const QUEUE_URL = process.env.CARD_REQUEST_QUEUE;
 const NOTIFICATION_QUEUE = process.env.NOTIFICATION_QUEUE;
 
@@ -17,7 +18,7 @@ export const handler = async (event) => {
 
     const existingUser = await dynamo.send(
         new ScanCommand({
-            TableName: "user-table",
+            TableName: USERS_TABLE,
             FilterExpression: "email = :email",
             ExpressionAttributeValues: {
                 ":email": body.email
@@ -48,7 +49,7 @@ export const handler = async (event) => {
     };
 
     await dynamo.send(new PutCommand({
-        TableName: "user-table",
+        TableName: USERS_TABLE,
         Item: user
     }));
 
