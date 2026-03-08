@@ -61,11 +61,27 @@ resource "aws_api_gateway_integration" "lambda_login" {
 resource "aws_api_gateway_deployment" "deployment" {
   rest_api_id = aws_api_gateway_rest_api.pigbank_api.id
 
-  depends_on = [
-    aws_api_gateway_integration.lambda_register,
-    aws_api_gateway_integration.lambda_login,
-    aws_api_gateway_integration.get_profile_integration
-  ]
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.register.id,
+      aws_api_gateway_resource.login.id,
+      aws_api_gateway_resource.profile_user.id,
+
+      aws_api_gateway_method.register_post.id,
+      aws_api_gateway_method.login_post.id,
+      aws_api_gateway_method.get_profile.id,
+      aws_api_gateway_method.update_user_method.id,
+
+      aws_api_gateway_integration.lambda_register.id,
+      aws_api_gateway_integration.lambda_login.id,
+      aws_api_gateway_integration.get_profile_integration.id,
+      aws_api_gateway_integration.update_user_integration.id
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 
 }
 
@@ -80,9 +96,7 @@ resource "aws_api_gateway_stage" "dev" {
 resource "aws_api_gateway_resource" "profile" {
 
   rest_api_id = aws_api_gateway_rest_api.pigbank_api.id
-
   parent_id = aws_api_gateway_rest_api.pigbank_api.root_resource_id
-
   path_part = "profile"
 
 }
@@ -119,4 +133,22 @@ resource "aws_api_gateway_integration" "get_profile_integration" {
 
   uri = aws_lambda_function.get_profile_user.invoke_arn
 
+}
+
+//Update
+resource "aws_api_gateway_method" "update_user_method" {
+  rest_api_id = aws_api_gateway_rest_api.pigbank_api.id
+  resource_id = aws_api_gateway_resource.profile_user.id
+  http_method = "PUT"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "update_user_integration" {
+  rest_api_id = aws_api_gateway_rest_api.pigbank_api.id
+  resource_id = aws_api_gateway_resource.profile_user.id
+  http_method = aws_api_gateway_method.update_user_method.http_method
+
+  integration_http_method = "POST"
+  type = "AWS_PROXY"
+  uri = aws_lambda_function.update_user_lambda.invoke_arn
 }

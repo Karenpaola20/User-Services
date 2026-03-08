@@ -113,3 +113,32 @@ resource "aws_lambda_permission" "api_get_profile" {
 
   source_arn = "${aws_api_gateway_rest_api.pigbank_api.execution_arn}/*/*"
 }
+
+//Update
+resource "aws_lambda_function" "update_user_lambda" {
+  function_name     = "update-user-lambda"
+
+  filename          = "${path.module}/lambdas/user-service/update-user-lambda/update-user-lambda.zip"
+  source_code_hash  = filebase64sha256("${path.module}/lambdas/user-service/update-user-lambda/update-user-lambda.zip")
+
+  handler           = "index.handler"
+  runtime           = "nodejs20.x"
+
+  role              = aws_iam_role.lambda_exec.arn
+
+  environment {
+    variables = {
+      USERS_TABLE = aws_dynamodb_table.user_table.name
+      NOTIFICATION_QUEUE = "https://sqs.us-east-1.amazonaws.com/537236557851/notification-email-sqs"
+    }
+  }
+}
+
+resource "aws_lambda_permission" "allow_apigw_update_user" {
+  statement_id    = "AllowAPIGatewayInvokeUpdateUser"
+  action          = "lambda:InvokeFunction"
+  function_name   = aws_lambda_function.update_user_lambda.function_name
+  principal       = "apigateway.amazonaws.com"
+
+  source_arn      = "${aws_api_gateway_rest_api.pigbank_api.execution_arn}/*/*"
+}

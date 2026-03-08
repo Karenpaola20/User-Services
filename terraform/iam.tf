@@ -31,7 +31,8 @@ resource "aws_iam_policy" "dynamodb_user_table_policy" {
         Action = [
           "dynamodb:PutItem",
           "dynamodb:Scan",
-          "dynamodb:GetItem"
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem"
         ]
         Resource = "arn:aws:dynamodb:us-east-1:*:table/user-table"
       }
